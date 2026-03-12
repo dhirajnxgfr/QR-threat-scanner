@@ -1,1517 +1,529 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Shield — Threat Scanner</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #1a1a24;
-    --border: #2a2a3a;
-    --accent: #00ff88;
-    --accent2: #ff3366;
-    --accent3: #ffaa00;
-    --text: #e8e8f0;
-    --muted: #6b6b80;
-    --danger: #ff3366;
-    --warn: #ffaa00;
-    --safe: #00ff88;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Animated grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  #particles-canvas {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .container {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 0 24px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* NAV */
-  nav {
-    padding: 24px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #000;
-    font-size: 18px;
-  }
-
-  .badge {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    padding: 4px 10px;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    border-radius: 100px;
-    letter-spacing: 1px;
-  }
-
-  /* HERO */
-  .hero {
-    padding: 80px 0 60px;
-    text-align: center;
-  }
-
-  .hero-tag {
-    display: inline-block;
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    margin-bottom: 24px;
-    padding: 6px 16px;
-    border: 1px solid rgba(0,255,136,0.3);
-    border-radius: 4px;
-    background: rgba(0,255,136,0.05);
-  }
-
-  h1 {
-    font-size: clamp(42px, 7vw, 80px);
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -3px;
-    margin-bottom: 24px;
-  }
-
-  h1 span {
-    color: var(--accent);
-    position: relative;
-  }
-
-  h1 span::after {
-    content: '';
-    position: absolute;
-    bottom: 4px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--accent);
-    opacity: 0.4;
-  }
-
-  .hero-sub {
-    font-size: 18px;
-    color: var(--muted);
-    max-width: 520px;
-    margin: 0 auto 48px;
-    line-height: 1.6;
-    font-weight: 400;
-  }
-
-  .hero-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--accent);
-    color: #000;
-    padding: 14px 32px;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 15px;
-    text-decoration: none;
-    letter-spacing: 0.3px;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 0 30px rgba(0,255,136,0.3);
-  }
-
-  .hero-cta:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 50px rgba(0,255,136,0.5);
-  }
-
-  /* SCAN DEMO */
-  .scan-demo {
-    margin: 60px 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .scan-header {
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface2);
-  }
-
-  .dot { width: 12px; height: 12px; border-radius: 50%; }
-  .dot-r { background: #ff5f57; }
-  .dot-y { background: #febc2e; }
-  .dot-g { background: #28c840; }
-
-  .scan-title {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    margin-left: 8px;
-  }
-
-  .scan-body {
-    padding: 32px;
-  }
-
-  /* Upload zone */
-  .upload-zone {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .upload-zone:hover {
-    border-color: var(--accent);
-    background: rgba(0,255,136,0.03);
-  }
-
-  .upload-zone.active {
-    border-color: var(--accent);
-    background: rgba(0,255,136,0.05);
-  }
-
-  .upload-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-  }
-
-  .upload-text {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-
-  .upload-sub {
-    font-size: 13px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-  }
-
-  #fileInput { display: none; }
-
-  /* Result panel - hidden by default */
-  .result-panel {
-    display: none;
-    margin-top: 24px;
-  }
-
-  .result-panel.show { display: block; }
-
-  /* Scanning animation */
-  .scanning {
-    display: none;
-    text-align: center;
-    padding: 32px;
-  }
-
-  .scanning.show { display: block; }
-
-  .scan-line {
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    animation: scanline 1.5s ease-in-out infinite;
-    margin-bottom: 16px;
-  }
-
-  @keyframes scanline {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-
-  .scan-status {
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    color: var(--accent);
-  }
-
-  /* Verdict card */
-  .verdict-card {
-    border-radius: 12px;
-    padding: 28px;
-    margin-bottom: 20px;
-    border: 1px solid;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .verdict-card.safe { border-color: var(--safe); background: rgba(0,255,136,0.05); }
-  .verdict-card.warn { border-color: var(--warn); background: rgba(255,170,0,0.05); }
-  .verdict-card.danger { border-color: var(--danger); background: rgba(255,51,102,0.05); }
-
-  .verdict-icon { font-size: 48px; flex-shrink: 0; }
-
-  .verdict-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 2px;
-    margin-bottom: 4px;
-    opacity: 0.7;
-  }
-
-  .verdict-title {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    margin-bottom: 4px;
-  }
-
-  .verdict-card.safe .verdict-title { color: var(--safe); }
-  .verdict-card.warn .verdict-title { color: var(--warn); }
-  .verdict-card.danger .verdict-title { color: var(--danger); }
-
-  .verdict-url {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    word-break: break-all;
-  }
-
-  /* Score bar */
-  .score-section {
-    margin-bottom: 20px;
-  }
-
-  .score-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-
-  .score-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: 1px;
-  }
-
-  .score-value {
-    font-family: 'Space Mono', monospace;
-    font-size: 24px;
-    font-weight: 700;
-  }
-
-  .score-bar-bg {
-    height: 8px;
-    background: var(--surface2);
-    border-radius: 100px;
-    overflow: hidden;
-  }
-
-  .score-bar-fill {
-    height: 100%;
-    border-radius: 100px;
-    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-    width: 0%;
-  }
-
-  /* Checks grid */
-  .checks-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .check-item {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: border-color 0.2s;
-  }
-
-  .check-item.pass { border-color: rgba(0,255,136,0.2); }
-  .check-item.fail { border-color: rgba(255,51,102,0.2); }
-  .check-item.warn-item { border-color: rgba(255,170,0,0.2); }
-
-  .check-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .check-item.pass .check-dot { background: var(--safe); box-shadow: 0 0 8px var(--safe); }
-  .check-item.fail .check-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
-  .check-item.warn-item .check-dot { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
-
-  .check-name {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .check-detail {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  /* API results row */
-  .api-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .api-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 20px;
-  }
-
-  .api-name {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-  }
-
-  .api-result {
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  /* Stats row */
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin: 60px 0;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 28px 24px;
-    text-align: center;
-  }
-
-  .stat-number {
-    font-size: 42px;
-    font-weight: 800;
-    letter-spacing: -2px;
-    color: var(--accent);
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    color: var(--muted);
-    font-weight: 400;
-  }
-
-  /* How it works */
-  .how-section {
-    margin: 60px 0;
-  }
-
-  .section-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    margin-bottom: 16px;
-  }
-
-  .section-title {
-    font-size: 36px;
-    font-weight: 800;
-    letter-spacing: -1.5px;
-    margin-bottom: 40px;
-  }
-
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-  }
-
-  .step {
-    position: relative;
-  }
-
-  .step-num {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--accent);
-    margin-bottom: 12px;
-    opacity: 0.7;
-  }
-
-  .step-icon {
-    font-size: 28px;
-    margin-bottom: 12px;
-  }
-
-  .step-title {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  .step-desc {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.5;
-  }
-
-  /* connector line */
-  .step:not(:last-child)::after {
-    content: '→';
-    position: absolute;
-    right: -12px;
-    top: 36px;
-    color: var(--border);
-    font-size: 18px;
-  }
-
-  /* Threat types */
-  .threats-section {
-    margin: 60px 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 40px;
-  }
-
-  .threat-list {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-top: 32px;
-  }
-
-  .threat-item {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-  }
-
-  .threat-icon-wrap {
-    width: 40px;
-    height: 40px;
-    background: var(--surface2);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-
-  .threat-name {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  .threat-desc {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.5;
-  }
-
-  /* Footer */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 32px 0;
-    margin-top: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .footer-left {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .footer-stack {
-    display: flex;
-    gap: 8px;
-  }
-
-  .tech-tag {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    padding: 4px 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--muted);
-  }
-
-  /* Animations */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .hero, .scan-demo, .stats-row, .how-section, .threats-section {
-    animation: fadeUp 0.6s ease both;
-  }
-
-  .stats-row { animation-delay: 0.1s; }
-  .how-section { animation-delay: 0.2s; }
-  .threats-section { animation-delay: 0.3s; }
-
-  /* Pulse on logo icon */
-  .logo-icon {
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
-    50% { box-shadow: 0 0 0 8px rgba(0,255,136,0); }
-  }
-
-  /* Typewriter cursor */
-  .typewriter-cursor {
-    display: inline-block;
-    width: 3px;
-    height: 1em;
-    background: var(--accent);
-    margin-left: 4px;
-    vertical-align: middle;
-    animation: blink 0.8s step-end infinite;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-
-  /* Scroll reveal */
-  .reveal {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.6s ease, transform 0.6s ease;
-  }
-
-  .reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Staggered check items */
-  .check-item {
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.2s;
-  }
-
-  .check-item.animate-in {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  /* Glitch effect on verdict title */
-  @keyframes glitch {
-    0%   { clip-path: inset(0 0 95% 0); transform: translate(-2px, 0); }
-    10%  { clip-path: inset(30% 0 50% 0); transform: translate(2px, 0); }
-    20%  { clip-path: inset(60% 0 20% 0); transform: translate(-2px, 0); }
-    30%  { clip-path: inset(10% 0 80% 0); transform: translate(1px, 0); }
-    40%  { clip-path: inset(80% 0 5% 0);  transform: translate(-1px, 0); }
-    50%  { clip-path: inset(45% 0 45% 0); transform: translate(2px, 0); }
-    100% { clip-path: inset(0 0 0 0);     transform: translate(0, 0); }
-  }
-
-  .glitch-active {
-    position: relative;
-  }
-
-  .glitch-active::before,
-  .glitch-active::after {
-    content: attr(data-text);
-    position: absolute;
-    top: 0; left: 0;
-    font-size: inherit;
-    font-weight: inherit;
-    width: 100%;
-  }
-
-  .glitch-active::before {
-    color: #ff3366;
-    animation: glitch 0.4s steps(1) forwards;
-    opacity: 0.8;
-  }
-
-  .glitch-active::after {
-    color: #00ffff;
-    animation: glitch 0.4s steps(1) 0.05s forwards;
-    opacity: 0.6;
-  }
-
-  /* Ripple on verdict card */
-  @keyframes ripple {
-    0%   { box-shadow: 0 0 0 0 rgba(255,51,102,0.4); }
-    70%  { box-shadow: 0 0 0 20px rgba(255,51,102,0); }
-    100% { box-shadow: 0 0 0 0 rgba(255,51,102,0); }
-  }
-
-  @keyframes ripple-safe {
-    0%   { box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
-    70%  { box-shadow: 0 0 0 20px rgba(0,255,136,0); }
-    100% { box-shadow: 0 0 0 0 rgba(0,255,136,0); }
-  }
-
-  .verdict-card.danger.ripple { animation: ripple 0.8s ease-out; }
-  .verdict-card.safe.ripple { animation: ripple-safe 0.8s ease-out; }
-
-  /* Stat counter */
-  .stat-number {
-    display: block;
-    transition: color 0.3s;
-  }
-
-  /* Hover lift on steps */
-  .step {
-    transition: transform 0.2s ease;
-    padding: 16px;
-    border-radius: 12px;
-    border: 1px solid transparent;
-  }
-
-  .step:hover {
-    transform: translateY(-4px);
-    border-color: var(--border);
-    background: var(--surface);
-  }
-
-  /* Threat item hover */
-  .threat-item {
-    padding: 12px;
-    border-radius: 10px;
-    transition: background 0.2s ease;
-  }
-
-  .threat-item:hover {
-    background: rgba(255,255,255,0.03);
-  }
-
-  .threat-icon-wrap {
-    transition: transform 0.2s ease;
-  }
-
-  .threat-item:hover .threat-icon-wrap {
-    transform: scale(1.15) rotate(-5deg);
-  }
-
-  /* Camera scanner */
-  .camera-section {
-    margin-top: 24px;
-    border-top: 1px solid var(--border);
-    padding-top: 24px;
-  }
-
-  .camera-toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    justify-content: center;
-    margin-bottom: 16px;
-  }
-
-  .camera-toggle:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,255,136,0.05);
-  }
-
-  .camera-toggle.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,255,136,0.08);
-  }
-
-  .camera-wrap {
-    display: none;
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    background: #000;
-  }
-
-  .camera-wrap.show { display: block; }
-
-  #cameraFeed {
-    width: 100%;
-    display: block;
-    border-radius: 12px;
-  }
-
-  #cameraCanvas { display: none; }
-
-  .camera-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-
-  .scan-frame {
-    width: 200px;
-    height: 200px;
-    position: relative;
-  }
-
-  .scan-frame::before,
-  .scan-frame::after,
-  .scan-frame .corner-br,
-  .scan-frame .corner-bl {
-    content: '';
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    border-color: var(--accent);
-    border-style: solid;
-  }
-
-  .scan-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
-  .scan-frame::after  { top: 0; right: 0; border-width: 3px 3px 0 0; }
-  .scan-frame .corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
-  .scan-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
-
-  .scan-beam {
-    position: absolute;
-    left: 4px; right: 4px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    box-shadow: 0 0 8px var(--accent);
-    animation: beam 2s ease-in-out infinite;
-    top: 4px;
-  }
-
-  @keyframes beam {
-    0%   { top: 4px; opacity: 1; }
-    48%  { opacity: 1; }
-    50%  { top: calc(100% - 6px); opacity: 1; }
-    98%  { opacity: 1; }
-    100% { top: 4px; opacity: 1; }
-  }
-
-  .camera-status {
-    position: absolute;
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--accent);
-    background: rgba(0,0,0,0.7);
-    padding: 4px 12px;
-    border-radius: 100px;
-    white-space: nowrap;
-    letter-spacing: 1px;
-  }
-
-  .camera-detected {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,255,136,0.15);
-    backdrop-filter: blur(2px);
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-  }
-
-  .camera-detected.show { opacity: 1; }
-
-  .detected-text {
-    font-family: 'Space Mono', monospace;
-    font-size: 14px;
-    color: var(--accent);
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-shadow: 0 0 20px var(--accent);
-  }
-
-  /* Scan progress bar */
-  .scan-progress-wrap {
-    height: 3px;
-    background: var(--surface2);
-    border-radius: 100px;
-    overflow: hidden;
-    margin-bottom: 16px;
-  }
-
-  .scan-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), #00ccff);
-    border-radius: 100px;
-    width: 0%;
-    transition: width 0.4s ease;
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  /* Terminal log lines */
-  .terminal-log {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 12px;
-    text-align: left;
-    min-height: 60px;
-  }
-
-  .log-line {
-    opacity: 0;
-    transform: translateY(4px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    margin-bottom: 4px;
-  }
-
-  .log-line.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .log-line.done { color: var(--accent); }
-  .log-line.active { color: var(--text); }
-  .log-line.pending { color: var(--border); }
-
-  @media (max-width: 640px) {
-    .checks-grid, .api-row, .steps, .threat-list { grid-template-columns: 1fr; }
-    .stats-row { grid-template-columns: 1fr 1fr; }
-    .step:not(:last-child)::after { display: none; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#030811" />
+  <meta name="description" content="QR Shield — Instantly detect phishing, malware & fraud in any QR code." />
+  <title>QR Shield — Stop QR Fraud Before It Starts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<canvas id="particles-canvas"></canvas>
-<div class="container">
 
-  <!-- NAV -->
-  <nav>
-    <div class="logo">
-      <div class="logo-icon">🛡</div>
-      QR Shield
+<!-- ═══════════════════════════════════════════════════════ NAV -->
+<nav>
+  <a href="#hero" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2"  y="2"  width="6" height="6" stroke="#00ffe0" stroke-width="1.5"/>
+        <rect x="12" y="2"  width="6" height="6" stroke="#00ffe0" stroke-width="1.5"/>
+        <rect x="2"  y="12" width="6" height="6" stroke="#00ffe0" stroke-width="1.5"/>
+        <rect x="13" y="13" width="4" height="4" fill="#00ffe0"/>
+      </svg>
     </div>
-    <span class="badge">HACKATHON BUILD</span>
-  </nav>
+    <span class="nav-logo-text">
+      <span class="glitch-logo">QR<span>SHIELD</span></span>
+    </span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">FEATURES</a>
+    <a href="#demo">DEMO</a>
+    <a href="#how">HOW IT WORKS</a>
+    <a href="#extension">EXTENSION</a>
+    <a href="#download" class="nav-cta">DOWNLOAD APP</a>
+  </div>
+  <div class="nav-hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
 
-  <!-- HERO -->
-  <div class="hero">
-    <div class="hero-tag">QUISHING ATTACKS ARE UP 587% IN 2024</div>
-    <h1>Scan any QR code.<br>Know if it's <span>safe</span>.</h1>
-    <p class="hero-sub">Instantly decode QR codes and check them against 90+ threat engines, Google Safe Browsing, and our custom heuristics engine — in seconds.</p>
-    <a href="#demo" class="hero-cta" onclick="document.getElementById('demo').scrollIntoView({behavior:'smooth'}); return false;">
-      🔍 Try the Scanner
-    </a>
+<!-- ══════════════════════════════════════════════════════ HERO -->
+<section id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-badge">THREAT DETECTION SYSTEM ACTIVE</div>
+
+  <h1 class="hero-title">
+    SCAN.<span class="line2">DETECT.</span>
+    <span class="line3">STAY PROTECTED</span>
+  </h1>
+
+  <p class="hero-sub">
+    QR Shield analyzes any QR code in real-time — catching phishing links,
+    malware payloads, and fraudulent redirects before they reach you.
+  </p>
+
+  <div class="hero-btns">
+    <a href="#demo"     class="btn-primary">TRY LIVE DEMO</a>
+    <a href="#download" class="btn-secondary">GET THE APP</a>
   </div>
 
-  <!-- STATS -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <span class="stat-number">90+</span>
-      <div class="stat-label">Threat engines via VirusTotal</div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <span class="hero-stat-num">90<span>+</span></span>
+      <div class="hero-stat-label">THREAT ENGINES</div>
     </div>
-    <div class="stat-card">
-      <span class="stat-number">8</span>
-      <div class="stat-label">Heuristic checks run instantly</div>
+    <div class="hero-stat">
+      <span class="hero-stat-num">8</span>
+      <div class="hero-stat-label">HEURISTIC CHECKS</div>
     </div>
-    <div class="stat-card">
-      <span class="stat-number">&lt;5s</span>
-      <div class="stat-label">Average scan time</div>
+    <div class="hero-stat">
+      <span class="hero-stat-num">0.<span>3s</span></span>
+      <div class="hero-stat-label">AVG SCAN TIME</div>
     </div>
   </div>
 
-  <!-- DEMO PANEL -->
-  <div class="scan-demo" id="demo">
-    <div class="scan-header">
-      <div class="dot dot-r"></div>
-      <div class="dot dot-y"></div>
-      <div class="dot dot-g"></div>
-      <span class="scan-title">qr-shield — threat scanner v1.0</span>
+  <div class="scroll-hint">SCROLL</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ FEATURES -->
+<section id="features">
+  <div class="section-label">CAPABILITIES</div>
+  <h2 class="section-title">MULTI-LAYER<br><span>PROTECTION</span></h2>
+  <p class="section-sub">Every QR code passes through our full threat analysis stack — from pixel to payload.</p>
+
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-num">01</div>
+      <span class="feat-icon">🔍</span>
+      <div class="feat-title">QR DECODING</div>
+      <p class="feat-desc">OpenCV + pyzbar powered decoding supports all QR variants, including damaged and low-contrast codes.</p>
+      <span class="feat-tag">OpenCV · pyzbar</span>
     </div>
-    <div class="scan-body">
+    <div class="feat-card">
+      <div class="feat-num">02</div>
+      <span class="feat-icon">🧠</span>
+      <div class="feat-title">HEURISTIC ANALYSIS</div>
+      <p class="feat-desc">8 built-in checks detect typosquatting, suspicious TLDs, redirect chains, and URL obfuscation patterns.</p>
+      <span class="feat-tag">8 CHECKS</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">03</div>
+      <span class="feat-icon">🛡️</span>
+      <div class="feat-title">VIRUSTOTAL API</div>
+      <p class="feat-desc">Cross-referenced against 90+ security engines. Any known malicious URL is flagged instantly.</p>
+      <span class="feat-tag">90+ ENGINES</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">04</div>
+      <span class="feat-icon">🌐</span>
+      <div class="feat-title">GOOGLE SAFE BROWSING</div>
+      <p class="feat-desc">Google's real-time threat database checked for phishing and malware sites, updated continuously.</p>
+      <span class="feat-tag">REAL-TIME</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">05</div>
+      <span class="feat-icon">📊</span>
+      <div class="feat-title">RISK SCORING</div>
+      <p class="feat-desc">A 0–100 composite risk score combines all signals to deliver a clear SAFE / WARN / DANGER verdict.</p>
+      <span class="feat-tag">0–100 SCORE</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">06</div>
+      <span class="feat-icon">📱</span>
+      <div class="feat-title">ANDROID APP</div>
+      <p class="feat-desc">Native Kotlin app with live camera scanning, offline heuristics, and scan history dashboard built-in.</p>
+      <span class="feat-tag">KOTLIN · ANDROID</span>
+    </div>
+  </div>
+</section>
 
-      <!-- Upload zone -->
-      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" accept="image/*">
-        <div class="upload-icon">📷</div>
-        <div class="upload-text">Drop a QR code image here</div>
-        <div class="upload-sub">PNG, JPG, WEBP supported</div>
-      </div>
+<!-- ════════════════════════════════════════════════════════ DEMO -->
+<section id="demo">
+  <div class="demo-inner">
+    <div class="section-label">LIVE DEMO</div>
+    <h2 class="section-title">TRY IT<br><span>NOW</span></h2>
+    <p class="section-sub">Upload a QR image or paste a URL. Our engine will analyze it instantly.</p>
 
-      <!-- Camera scanner -->
-      <div class="camera-section">
-        <button class="camera-toggle" id="cameraToggle" onclick="toggleCamera()">
-          📷 &nbsp; USE LIVE CAMERA INSTEAD
-        </button>
-        <div class="camera-wrap" id="cameraWrap">
-          <video id="cameraFeed" autoplay playsinline muted></video>
-          <canvas id="cameraCanvas"></canvas>
-          <div class="camera-overlay">
-            <div class="scan-frame">
-              <div class="corner-br"></div>
-              <div class="corner-bl"></div>
-              <div class="scan-beam"></div>
+    <div class="demo-layout">
+
+      <!-- Input panel -->
+      <div class="demo-panel">
+        <div class="demo-panel-head">
+          <div class="demo-dot r"></div>
+          <div class="demo-dot y"></div>
+          <div class="demo-dot g"></div>
+          <span>scanner.input</span>
+        </div>
+        <div class="demo-panel-body">
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)" />
+            <span class="upload-icon">⬆</span>
+            <div class="upload-text">
+              <strong>Drop QR image here</strong><br>
+              or click to browse<br>
+              PNG · JPG · WEBP
             </div>
           </div>
-          <div class="camera-detected" id="cameraDetected">
-            <div class="detected-text">⬡ QR DETECTED</div>
+          <div class="demo-or">OR PASTE URL</div>
+          <div class="url-row">
+            <input class="url-field" id="urlInput" type="text" placeholder="https://suspicious-link.com/pay" />
+            <button class="scan-btn" onclick="scanURL()">SCAN</button>
           </div>
-          <div class="camera-status" id="cameraStatus">⬡ SCANNING FOR QR CODE...</div>
+          <div id="selectedFile" class="selected-file-label"></div>
         </div>
-      </div>
-
-      <!-- Scanning state -->
-      <div class="scanning" id="scanningState">
-        <div class="scan-progress-wrap">
-          <div class="scan-progress-fill" id="scanProgress"></div>
-        </div>
-        <div class="scan-line"></div>
-        <div class="scan-status" id="scanStatus">⬡ INITIALIZING...</div>
-        <div class="terminal-log" id="terminalLog"></div>
       </div>
 
       <!-- Result panel -->
-      <div class="result-panel" id="resultPanel">
-
-        <!-- Verdict -->
-        <div class="verdict-card" id="verdictCard">
-          <div class="verdict-icon" id="verdictIcon">🔴</div>
-          <div>
-            <div class="verdict-label">THREAT VERDICT</div>
-            <div class="verdict-title" id="verdictTitle">MALICIOUS</div>
-            <div class="verdict-url" id="verdictUrl">https://paypa1.com/login/verify/account</div>
-          </div>
+      <div class="demo-panel">
+        <div class="demo-panel-head">
+          <div class="demo-dot r"></div>
+          <div class="demo-dot y"></div>
+          <div class="demo-dot g"></div>
+          <span>scanner.result</span>
         </div>
+        <div class="demo-panel-body">
 
-        <!-- Score bar -->
-        <div class="score-section">
-          <div class="score-header">
-            <span class="score-label">RISK SCORE</span>
-            <span class="score-value" id="scoreValue">0/100</span>
+          <div class="result-empty" id="resultEmpty">
+            <span class="result-empty-icon">🛡</span>
+            <div class="result-empty-text">Awaiting scan input…<br>No threats detected yet.</div>
           </div>
-          <div class="score-bar-bg">
-            <div class="score-bar-fill" id="scoreBar"></div>
+
+          <div class="scanning" id="scanning">
+            <div class="scan-anim"></div>
+            <div class="scan-text">ANALYZING THREAT VECTORS...</div>
           </div>
+
+          <div class="result-card" id="resultCard">
+            <div class="verdict-bar" id="verdictBar">
+              <span id="verdictText">SAFE</span>
+              <div class="score-ring">
+                <svg width="64" height="64" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="26" fill="none" stroke="#102040" stroke-width="4"/>
+                  <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="4"
+                    stroke-dasharray="163.4" id="scoreArc" stroke-dashoffset="163.4" stroke-linecap="round"/>
+                </svg>
+                <div class="score-ring-num" id="scoreNum">0</div>
+              </div>
+            </div>
+            <div class="url-decoded" id="urlDecoded">—</div>
+            <ul class="check-list" id="checkList"></ul>
+          </div>
+
         </div>
-
-        <!-- Checks -->
-        <div class="checks-grid" id="checksGrid"></div>
-
-        <!-- API Results -->
-        <div class="api-row">
-          <div class="api-card">
-            <div class="api-name">VIRUSTOTAL</div>
-            <div class="api-result" id="vtResult">—</div>
-          </div>
-          <div class="api-card">
-            <div class="api-name">GOOGLE SAFE BROWSING</div>
-            <div class="api-result" id="gsbResult">—</div>
-          </div>
-        </div>
-
       </div>
     </div>
-  </div>
 
-  <!-- HOW IT WORKS -->
-  <div class="how-section">
-    <div class="section-label">HOW IT WORKS</div>
-    <div class="section-title">4 layers of protection</div>
+    <p class="demo-note">
+      ⚠ Demo runs simulated analysis. Connect to your Python backend (app.py) for live results.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ HOW IT WORKS -->
+<section id="how">
+  <div class="how-inner">
+    <div class="section-label">PROCESS</div>
+    <h2 class="section-title">HOW IT<br><span>WORKS</span></h2>
     <div class="steps">
       <div class="step">
-        <div class="step-num">01</div>
-        <div class="step-icon">📷</div>
-        <div class="step-title">QR Decode</div>
-        <div class="step-desc">OpenCV + pyzbar extracts the hidden URL from any QR image</div>
+        <div class="step-num">1</div>
+        <span class="step-icon">📷</span>
+        <div class="step-title">CAPTURE</div>
+        <p class="step-desc">Upload a QR image or point your phone camera at any QR code in the wild.</p>
       </div>
       <div class="step">
-        <div class="step-num">02</div>
-        <div class="step-icon">🔗</div>
-        <div class="step-title">URL Unshorten</div>
-        <div class="step-desc">Follow all redirects to expose the true final destination</div>
+        <div class="step-num">2</div>
+        <span class="step-icon">⚙️</span>
+        <div class="step-title">DECODE</div>
+        <p class="step-desc">OpenCV extracts the raw URL or payload from the QR matrix data.</p>
       </div>
       <div class="step">
-        <div class="step-num">03</div>
-        <div class="step-icon">🧠</div>
-        <div class="step-title">Heuristics</div>
-        <div class="step-desc">8 rules: typosquatting, suspicious TLDs, IP hosts, SSL errors</div>
+        <div class="step-num">3</div>
+        <span class="step-icon">🔬</span>
+        <div class="step-title">ANALYZE</div>
+        <p class="step-desc">8 heuristics + VirusTotal + Google Safe Browsing run in parallel.</p>
       </div>
       <div class="step">
-        <div class="step-num">04</div>
-        <div class="step-icon">☁️</div>
-        <div class="step-title">Threat APIs</div>
-        <div class="step-desc">Cross-check with VirusTotal (90+ engines) + Google Safe Browsing</div>
+        <div class="step-num">4</div>
+        <span class="step-icon">✅</span>
+        <div class="step-title">VERDICT</div>
+        <p class="step-desc">Risk score 0–100 with a clear SAFE / WARN / DANGER result delivered instantly.</p>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- THREAT TYPES -->
-  <div class="threats-section">
-    <div class="section-label">WHAT WE CATCH</div>
-    <div class="section-title">Common QR attack vectors</div>
-    <div class="threat-list">
-      <div class="threat-item">
-        <div class="threat-icon-wrap">🎣</div>
-        <div>
-          <div class="threat-name">Phishing Pages</div>
-          <div class="threat-desc">Fake login pages designed to steal credentials from unsuspecting users</div>
-        </div>
+<!-- ═══════════════════════════════════════════════ THREAT TYPES -->
+<section id="threats">
+  <div class="section-label">THREAT INTEL</div>
+  <h2 class="section-title">WHAT WE<br><span>DETECT</span></h2>
+  <p class="section-sub">QR codes are increasingly weaponized. QR Shield catches them all.</p>
+
+  <div class="threats-grid">
+    <div class="threat-card">
+      <div class="threat-icon-wrap">🎣</div>
+      <div>
+        <div class="threat-title">PHISHING SITES</div>
+        <p class="threat-desc">Fake banking, payment, and login pages designed to steal credentials via convincing QR code redirects.</p>
+        <span class="threat-badge high">HIGH RISK</span>
       </div>
-      <div class="threat-item">
-        <div class="threat-icon-wrap">🔤</div>
-        <div>
-          <div class="threat-name">Typosquatting</div>
-          <div class="threat-desc">paypa1.com, g00gle.com — domains that impersonate trusted brands</div>
-        </div>
+    </div>
+    <div class="threat-card">
+      <div class="threat-icon-wrap">☣️</div>
+      <div>
+        <div class="threat-title">MALWARE PAYLOADS</div>
+        <p class="threat-desc">QR codes that trigger automatic APK downloads, drive-by installs, or malicious scripts on scan.</p>
+        <span class="threat-badge high">HIGH RISK</span>
       </div>
-      <div class="threat-item">
-        <div class="threat-icon-wrap">🔀</div>
-        <div>
-          <div class="threat-name">Redirect Chains</div>
-          <div class="threat-desc">Multiple hops designed to hide the true malicious destination</div>
-        </div>
+    </div>
+    <div class="threat-card">
+      <div class="threat-icon-wrap">🔀</div>
+      <div>
+        <div class="threat-title">REDIRECT CHAINS</div>
+        <p class="threat-desc">Multi-hop redirect sequences that obscure the final malicious destination from casual inspection.</p>
+        <span class="threat-badge med">MEDIUM RISK</span>
       </div>
-      <div class="threat-item">
-        <div class="threat-icon-wrap">💀</div>
-        <div>
-          <div class="threat-name">Malware Downloads</div>
-          <div class="threat-desc">URLs that silently trigger APK or executable downloads on mobile</div>
-        </div>
-      </div>
-      <div class="threat-item">
-        <div class="threat-icon-wrap">🌐</div>
-        <div>
-          <div class="threat-name">IP-Based URLs</div>
-          <div class="threat-desc">Raw IP addresses used to bypass domain reputation checks</div>
-        </div>
-      </div>
-      <div class="threat-item">
-        <div class="threat-icon-wrap">🆔</div>
-        <div>
-          <div class="threat-name">Credential Harvesting</div>
-          <div class="threat-desc">Pages mimicking banks, government portals, and payment systems</div>
-        </div>
+    </div>
+    <div class="threat-card">
+      <div class="threat-icon-wrap">🧬</div>
+      <div>
+        <div class="threat-title">TYPOSQUATTING</div>
+        <p class="threat-desc">Lookalike domains mimicking trusted brands — e.g. paypa1.com, amaz0n-secure.net — caught by heuristics.</p>
+        <span class="threat-badge med">MEDIUM RISK</span>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-left">Built in 3 hours for hackathon demo</div>
-    <div class="footer-stack">
-      <span class="tech-tag">Python</span>
-      <span class="tech-tag">Streamlit</span>
-      <span class="tech-tag">OpenCV</span>
-      <span class="tech-tag">VirusTotal</span>
-      <span class="tech-tag">pyzbar</span>
-    </div>
-  </footer>
+<!-- ══════════════════════════════════════════ BROWSER EXTENSION -->
+<section id="extension">
+  <div class="ext-inner">
+    <div class="section-label">BROWSER EXTENSION</div>
+    <h2 class="section-title">PROTECT YOUR<br><span>BROWSER</span></h2>
+    <p class="section-sub">QR Shield lives right inside Chrome and Firefox — scanning QR codes on any webpage the moment you hover over them.</p>
 
-</div>
+    <div class="ext-layout">
 
-<script>
-  // ── PARTICLES ──────────────────────────────────────────────
-  const canvas = document.getElementById('particles-canvas');
-  const ctx = canvas.getContext('2d');
-  let particles = [];
-
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  function createParticle() {
-    return {
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      size: Math.random() * 1.5 + 0.5,
-      alpha: Math.random() * 0.4 + 0.1,
-      color: Math.random() > 0.85 ? '#ff3366' : '#00ff88',
-    };
-  }
-
-  for (let i = 0; i < 60; i++) particles.push(createParticle());
-
-  function drawParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = p.alpha;
-      ctx.fill();
-      p.x += p.vx;
-      p.y += p.vy;
-      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-    });
-    // Draw faint connecting lines between nearby particles
-    ctx.globalAlpha = 0.05;
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const dx = particles[i].x - particles[j].x;
-        const dy = particles[i].y - particles[j].y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < 120) {
-          ctx.beginPath();
-          ctx.strokeStyle = '#00ff88';
-          ctx.lineWidth = 0.5;
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.stroke();
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-    requestAnimationFrame(drawParticles);
-  }
-  drawParticles();
-
-  // ── TYPEWRITER HERO TAG ────────────────────────────────────
-  const heroTag = document.querySelector('.hero-tag');
-  const heroTagText = heroTag.textContent;
-  heroTag.innerHTML = '<span id="tw-text"></span><span class="typewriter-cursor"></span>';
-  const twEl = document.getElementById('tw-text');
-  let twI = 0;
-  function typeWrite() {
-    if (twI <= heroTagText.length) {
-      twEl.textContent = heroTagText.slice(0, twI++);
-      setTimeout(typeWrite, 35);
-    }
-  }
-  setTimeout(typeWrite, 600);
-
-  // ── SCROLL REVEAL ──────────────────────────────────────────
-  document.querySelectorAll('.how-section, .threats-section, .stats-row').forEach(el => {
-    el.classList.add('reveal');
-    el.style.animation = 'none'; // override existing fadeUp
-  });
-
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry, i) => {
-      if (entry.isIntersecting) {
-        setTimeout(() => entry.target.classList.add('visible'), i * 100);
-        revealObserver.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.15 });
-
-  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-
-  // ── ANIMATED STAT COUNTERS ─────────────────────────────────
-  function animateCounter(el, target, suffix = '', duration = 1200) {
-    const start = performance.now();
-    const isFloat = String(target).includes('.');
-    function update(now) {
-      const t = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      const val = isFloat ? (target * ease).toFixed(1) : Math.round(target * ease);
-      el.textContent = val + suffix;
-      if (t < 1) requestAnimationFrame(update);
-    }
-    requestAnimationFrame(update);
-  }
-
-  const statObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const cards = entry.target.querySelectorAll('.stat-number');
-        const targets = [90, 8, 5];
-        const suffixes = ['+', '', 's'];
-        cards.forEach((el, i) => animateCounter(el, targets[i], suffixes[i]));
-        statObserver.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.5 });
-
-  const statsRow = document.querySelector('.stats-row');
-  if (statsRow) statObserver.observe(statsRow);
-
-  // ── DEMO SCANNER ──────────────────────────────────────────
-  const fileInput = document.getElementById('fileInput');
-  const uploadZone = document.getElementById('uploadZone');
-  const scanningState = document.getElementById('scanningState');
-  const resultPanel = document.getElementById('resultPanel');
-  const scanStatus = document.getElementById('scanStatus');
-
-  const scenarios = [
-    {
-      url: 'https://paypa1.com/login/verify/account/secure',
-      verdict: 'MALICIOUS',
-      score: 82,
-      color: '#ff3366',
-      emoji: '🔴',
-      cardClass: 'danger',
-      checks: [
-        { name: 'HTTPS', detail: 'present', status: 'pass' },
-        { name: 'Typosquatting', detail: 'paypa1.com → paypal.com', status: 'fail' },
-        { name: 'Suspicious Keywords', detail: 'login, verify, secure', status: 'fail' },
-        { name: 'Domain Age', detail: '3 days old', status: 'fail' },
-        { name: 'TLD Check', detail: '.com — OK', status: 'pass' },
-        { name: 'Redirect Chain', detail: '2 hops', status: 'pass' },
-        { name: 'SSL Certificate', detail: 'self-signed', status: 'warn' },
-        { name: 'IP-Based Host', detail: 'domain name used', status: 'pass' },
-      ],
-      vt: '🔴 14/90 engines flagged',
-      gsb: '🔴 SOCIAL_ENGINEERING'
-    },
-    {
-      url: 'https://github.com/anthropics/anthropic-sdk-python',
-      verdict: 'SAFE',
-      score: 4,
-      color: '#00ff88',
-      emoji: '🟢',
-      cardClass: 'safe',
-      checks: [
-        { name: 'HTTPS', detail: 'valid certificate', status: 'pass' },
-        { name: 'Typosquatting', detail: 'no match found', status: 'pass' },
-        { name: 'Suspicious Keywords', detail: 'none found', status: 'pass' },
-        { name: 'Domain Age', detail: '15+ years', status: 'pass' },
-        { name: 'TLD Check', detail: '.com — OK', status: 'pass' },
-        { name: 'Redirect Chain', detail: '1 hop', status: 'pass' },
-        { name: 'SSL Certificate', detail: 'valid, trusted CA', status: 'pass' },
-        { name: 'IP-Based Host', detail: 'domain name used', status: 'pass' },
-      ],
-      vt: '🟢 0/90 engines flagged',
-      gsb: '🟢 No threats found'
-    },
-    {
-      url: 'http://192.168.1.1/secure/banking/login?redirect=http://evil.tk',
-      verdict: 'MALICIOUS',
-      score: 95,
-      color: '#ff3366',
-      emoji: '🔴',
-      cardClass: 'danger',
-      checks: [
-        { name: 'HTTPS', detail: 'NOT present', status: 'fail' },
-        { name: 'Typosquatting', detail: 'not applicable', status: 'pass' },
-        { name: 'Suspicious Keywords', detail: 'secure, banking, login', status: 'fail' },
-        { name: 'Domain Age', detail: 'N/A (raw IP)', status: 'fail' },
-        { name: 'TLD Check', detail: '.tk — high-risk', status: 'fail' },
-        { name: 'Redirect Chain', detail: '5 hops detected', status: 'fail' },
-        { name: 'SSL Certificate', detail: 'missing', status: 'fail' },
-        { name: 'IP-Based Host', detail: '⚠ raw IP: 192.168.1.1', status: 'fail' },
-      ],
-      vt: '🔴 51/90 engines flagged',
-      gsb: '🔴 MALWARE + SOCIAL_ENGINEERING'
-    }
-  ];
-
-  let currentScenario = 0;
-
-  fileInput.addEventListener('change', (e) => { if (e.target.files[0]) runDemo(); });
-  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('active'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('active'));
-  uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('active'); runDemo(); });
-
-  function runDemo() {
-    const s = scenarios[currentScenario % scenarios.length];
-    currentScenario++;
-
-    uploadZone.style.display = 'none';
-    resultPanel.classList.remove('show');
-    scanningState.classList.add('show');
-
-    const steps = [
-      { label: '⬡ DECODING QR CODE...', done: '✓ QR decoded successfully' },
-      { label: '⬡ FOLLOWING REDIRECT CHAIN...', done: '✓ Redirect chain resolved' },
-      { label: '⬡ RUNNING HEURISTICS ENGINE...', done: '✓ 8 checks completed' },
-      { label: '⬡ QUERYING VIRUSTOTAL API...', done: '✓ VirusTotal scan complete' },
-      { label: '⬡ CHECKING GOOGLE SAFE BROWSING...', done: '✓ GSB check complete' },
-      { label: '⬡ CALCULATING RISK SCORE...', done: '✓ Risk score ready' },
-    ];
-
-    const terminalLog = document.getElementById('terminalLog');
-    const progressBar = document.getElementById('scanProgress');
-    terminalLog.innerHTML = '';
-
-    // Pre-render all log lines as pending
-    steps.forEach((step, i) => {
-      const line = document.createElement('div');
-      line.className = 'log-line pending';
-      line.id = `log-line-${i}`;
-      line.textContent = `  ${step.label.replace('⬡ ', '○ ')}`;
-      terminalLog.appendChild(line);
-      setTimeout(() => line.classList.add('show'), i * 50);
-    });
-
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < steps.length) {
-        scanStatus.textContent = steps[i].label;
-        progressBar.style.width = `${((i + 1) / steps.length) * 100}%`;
-
-        // Mark current as active
-        const activeLine = document.getElementById(`log-line-${i}`);
-        activeLine.className = 'log-line active show';
-        activeLine.textContent = `  ${steps[i].label}`;
-
-        // Mark previous as done
-        if (i > 0) {
-          const doneLine = document.getElementById(`log-line-${i - 1}`);
-          doneLine.className = 'log-line done show';
-          doneLine.textContent = `  ${steps[i - 1].done}`;
-        }
-        i++;
-      } else {
-        // Mark last as done
-        const doneLine = document.getElementById(`log-line-${i - 1}`);
-        if (doneLine) {
-          doneLine.className = 'log-line done show';
-          doneLine.textContent = `  ${steps[i - 1].done}`;
-        }
-        progressBar.style.width = '100%';
-        clearInterval(interval);
-        setTimeout(() => showResult(s), 300);
-      }
-    }, 450);
-  }
-
-  function showResult(s) {
-    scanningState.classList.remove('show');
-    resultPanel.classList.add('show');
-
-    // Verdict card with ripple
-    const card = document.getElementById('verdictCard');
-    card.className = `verdict-card ${s.cardClass}`;
-    void card.offsetWidth; // force reflow
-    card.classList.add('ripple');
-    card.addEventListener('animationend', () => card.classList.remove('ripple'), { once: true });
-
-    document.getElementById('verdictIcon').textContent = s.emoji;
-
-    // Glitch effect on verdict title
-    const titleEl = document.getElementById('verdictTitle');
-    titleEl.textContent = s.verdict;
-    titleEl.style.color = s.color;
-    titleEl.setAttribute('data-text', s.verdict);
-    titleEl.classList.add('glitch-active');
-    setTimeout(() => titleEl.classList.remove('glitch-active'), 500);
-
-    document.getElementById('verdictUrl').textContent = s.url;
-
-    // Animated score counter
-    const scoreEl = document.getElementById('scoreValue');
-    scoreEl.style.color = s.color;
-    animateCounter(scoreEl, s.score, '/100', 800);
-
-    const bar = document.getElementById('scoreBar');
-    bar.style.background = s.color;
-    bar.style.boxShadow = `0 0 12px ${s.color}66`;
-    setTimeout(() => { bar.style.width = s.score + '%'; }, 50);
-
-    // Staggered check items
-    const grid = document.getElementById('checksGrid');
-    grid.innerHTML = s.checks.map(c => `
-      <div class="check-item ${c.status === 'fail' ? 'fail' : c.status === 'warn' ? 'warn-item' : 'pass'}">
-        <div class="check-dot"></div>
-        <div>
-          <div class="check-name">${c.name}</div>
-          <div class="check-detail">${c.detail}</div>
+      <!-- Browser mockup -->
+      <div class="browser-mockup">
+        <div class="browser-chrome">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <span class="bd r"></span>
+              <span class="bd y"></span>
+              <span class="bd g"></span>
+            </div>
+            <div class="browser-url">
+              <span class="url-lock">🔒</span>
+              <span>bank-secure-verify.xyz/login</span>
+            </div>
+            <div class="browser-ext-icon" title="QR Shield Active">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <rect x="2"  y="2"  width="6" height="6" stroke="#00ffe0" stroke-width="1.5"/>
+                <rect x="12" y="2"  width="6" height="6" stroke="#00ffe0" stroke-width="1.5"/>
+                <rect x="2"  y="12" width="6" height="6" stroke="#00ffe0" stroke-width="1.5"/>
+                <rect x="13" y="13" width="4" height="4" fill="#00ffe0"/>
+              </svg>
+            </div>
+          </div>
+          <div class="browser-body">
+            <div class="browser-page-content">
+              <div class="fake-page-title">Secure Payment Portal</div>
+              <div class="fake-page-sub">Scan QR to complete transaction</div>
+              <div class="qr-on-page">
+                <div class="qr-mock-grid">
+                  <div class="qr-block"></div><div class="qr-block w"></div><div class="qr-block"></div>
+                  <div class="qr-block"></div><div class="qr-block"></div><div class="qr-block w"></div>
+                  <div class="qr-block w"></div><div class="qr-block"></div><div class="qr-block"></div>
+                </div>
+                <!-- Shield overlay popup -->
+                <div class="ext-popup danger">
+                  <div class="ext-popup-header">
+                    <span class="ext-popup-icon">🚨</span>
+                    <span class="ext-popup-title">THREAT DETECTED</span>
+                  </div>
+                  <div class="ext-popup-url">bank-secure-verify.xyz</div>
+                  <div class="ext-popup-score">Risk Score: <strong>87</strong>/100</div>
+                  <div class="ext-popup-tags">
+                    <span class="ext-tag">Phishing</span>
+                    <span class="ext-tag">Typosquat</span>
+                  </div>
+                  <button class="ext-popup-block">BLOCK THIS QR</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    `).join('');
 
-    grid.querySelectorAll('.check-item').forEach((el, i) => {
-      setTimeout(() => el.classList.add('animate-in'), i * 80);
-    });
+      <!-- Extension info -->
+      <div class="ext-info">
+        <div class="ext-feature-list">
+          <div class="ext-feat">
+            <div class="ext-feat-icon">👁️</div>
+            <div>
+              <div class="ext-feat-title">AUTO-DETECT ON PAGE</div>
+              <p class="ext-feat-desc">Scans every QR code found on any webpage automatically as you browse.</p>
+            </div>
+          </div>
+          <div class="ext-feat">
+            <div class="ext-feat-icon">⚡</div>
+            <div>
+              <div class="ext-feat-title">INSTANT HOVER VERDICT</div>
+              <p class="ext-feat-desc">Hover over any QR and get a threat verdict popup in under 300ms.</p>
+            </div>
+          </div>
+          <div class="ext-feat">
+            <div class="ext-feat-icon">🚫</div>
+            <div>
+              <div class="ext-feat-title">ONE-CLICK BLOCK</div>
+              <p class="ext-feat-desc">Block dangerous QR codes and report them to our threat database instantly.</p>
+            </div>
+          </div>
+          <div class="ext-feat">
+            <div class="ext-feat-icon">🔔</div>
+            <div>
+              <div class="ext-feat-title">REAL-TIME ALERTS</div>
+              <p class="ext-feat-desc">Get notified the moment a dangerous QR is detected on a page you're visiting.</p>
+            </div>
+          </div>
+        </div>
 
-    document.getElementById('vtResult').textContent = s.vt;
-    document.getElementById('gsbResult').textContent = s.gsb;
+        <div class="ext-dl-row">
+          <a href="#" class="ext-dl-btn">
+            <svg class="ext-browser-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            <div>
+              <div class="ext-dl-title">Chrome Extension</div>
+              <div class="ext-dl-sub">Chrome Web Store · Coming Soon</div>
+            </div>
+            <span class="ext-dl-badge">SOON</span>
+          </a>
+          <a href="#" class="ext-dl-btn">
+            <svg class="ext-browser-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            <div>
+              <div class="ext-dl-title">Firefox Add-on</div>
+              <div class="ext-dl-sub">Firefox Add-ons · Coming Soon</div>
+            </div>
+            <span class="ext-dl-badge">SOON</span>
+          </a>
+        </div>
 
-    setTimeout(() => {
-      uploadZone.style.display = 'block';
-      uploadZone.querySelector('.upload-text').textContent = 'Scan another QR code';
-      uploadZone.style.padding = '20px 24px';
-    }, 500);
-  }
-</script>
+        <div class="ext-note">
+          Extension source will be open-sourced on GitHub alongside the Android app.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ DOWNLOAD APP -->
+<section id="download">
+  <div class="section-label">MOBILE APP</div>
+  <h2 class="section-title">PROTECT YOUR<br><span>PHONE</span></h2>
+  <p class="section-sub">The QR Shield Android app brings full threat detection to your camera in real-time.</p>
+
+  <div class="download-layout">
+
+    <!-- Phone mockup -->
+    <div class="phone-mockup">
+      <div class="phone-glow"></div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-status">
+            <span>9:41</span><span>📶 🔋</span>
+          </div>
+          <div class="phone-app-head">
+            <div class="p-logo">
+              <span class="glitch-logo">QRSHIELD</span>
+            </div>
+          </div>
+          <div class="phone-viewfinder">
+            <div class="phone-vf-corner tl"></div>
+            <div class="phone-vf-corner tr"></div>
+            <div class="phone-vf-corner bl"></div>
+            <div class="phone-vf-corner br"></div>
+            <div class="phone-scan-line"></div>
+            <div class="phone-vf-text">Point at QR code</div>
+          </div>
+          <div class="phone-btn-row">
+            <div class="phone-btn">HISTORY</div>
+            <div class="phone-btn main">📷 SCAN</div>
+            <div class="phone-btn">SETTINGS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- App info -->
+    <div class="download-info">
+      <div class="download-version">ANDROID · FREE · NO ADS</div>
+      <ul class="dl-features">
+        <li>Live camera QR scanning with instant results</li>
+        <li>Offline heuristic checks — no internet needed</li>
+        <li>Full scan history with threat log dashboard</li>
+        <li>VirusTotal + Safe Browsing when online</li>
+        <li>Share scan reports via WhatsApp, email</li>
+        <li>Dark mode, minimal permissions</li>
+      </ul>
+
+      <a href="#" class="dl-btn" id="apkDownload">
+        <span class="dl-btn-icon">🤖</span>
+        <div class="dl-btn-text">
+          <div class="dl-btn-title">DOWNLOAD APK</div>
+          <div class="dl-btn-sub">Android 7.0+ · ~8MB · v1.0.0</div>
+        </div>
+        <span class="dl-btn-arrow">→</span>
+      </a>
+
+      <a href="https://github.com/dhirajnxgfr/QR-threat-scanner" target="_blank" class="dl-btn">
+        <span class="dl-btn-icon">⬡</span>
+        <div class="dl-btn-text">
+          <div class="dl-btn-title">VIEW SOURCE</div>
+          <div class="dl-btn-sub">GitHub · Open Source</div>
+        </div>
+        <span class="dl-btn-arrow">→</span>
+      </a>
+
+      <div class="requirements">
+        Requires: Android 7.0 (Nougat) or higher<br>
+        Camera permission · Internet optional for cloud scan<br>
+        No account required · No data collected
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="f-logo">
+          <span class="glitch-logo">QR<span>SHIELD</span></span>
+        </div>
+        <p>Real-time QR code threat detection. Open-source, fast, and built for the security-conscious.</p>
+      </div>
+      <div class="footer-col">
+        <h4>PRODUCT</h4>
+        <a href="#demo">Live Demo</a>
+        <a href="#features">Features</a>
+        <a href="#extension">Browser Extension</a>
+        <a href="#download">Android App</a>
+        <a href="#how">How It Works</a>
+      </div>
+      <div class="footer-col">
+        <h4>PROJECT</h4>
+        <a href="https://github.com/dhirajnxgfr/QR-threat-scanner" target="_blank">GitHub</a>
+        <a href="#">Report Issue</a>
+        <a href="#">Changelog</a>
+        <a href="#">Privacy Policy</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 QR SHIELD · OPEN SOURCE · MIT LICENSE</span>
+      <div class="footer-status">
+        <div class="status-dot"></div>
+        <span>ALL SYSTEMS OPERATIONAL</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
 </body>
 </html>
